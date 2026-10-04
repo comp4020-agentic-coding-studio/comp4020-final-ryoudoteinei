@@ -4,7 +4,7 @@
 
 The useful breakthrough in this iteration was translating “a trace that is still there” into a complete interaction rather than a database checkbox. A visitor needs to submit something, receive a truthful acknowledgement, return to it, and retain control over their own contribution. That led to permanent note links, browser ownership, and a restart test as well as the basic save operation.
 
-I asked the agent to begin from the course requirements and supplied the official repository. It proposed and implemented the shared wall as a first direction. The local tests establish that two visitors can share a saved note without sharing deletion rights. They do not establish that the wall is useful in an actual workshop, or that the deployed Fly volume has been verified. Those distinctions matter when deciding what this milestone demonstrates.
+I asked the agent to begin from the course requirements and supplied the official repository and deployment token. It proposed and implemented the shared wall as a first direction. Tests establish that two visitors can share a saved note without sharing deletion rights. A separate live check verified that a note survived a Fly machine restart. Neither establishes that the wall is useful in an actual workshop. That distinction matters when deciding what this milestone demonstrates.
 
 ## What did this work change about who I want to be as a software developer?
 

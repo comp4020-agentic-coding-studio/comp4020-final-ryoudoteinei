@@ -16,10 +16,10 @@ The [final project brief](https://comp.anu.edu.au/courses/comp4020-agentic-codin
 
 ## Promises and checks
 
-The server validates note length and category, saves acknowledged writes to SQLite, and checks ownership before deletion. Automated tests exercise two visitors, unsafe markup, invalid submissions, and persistence after restarting the application. The database belongs on Fly's persistent volume. Local restart tests support that design; they do not substitute for testing the actual deployed volume.
+The server validates note length and category, saves acknowledged writes to SQLite, and checks ownership before deletion. Automated tests exercise two visitors, unsafe markup, invalid submissions, and persistence after restarting the application. The database lives on Fly's persistent volume. A deployment check also saved a temporary note, restarted the actual Fly machine, verified the note survived, and removed it using its original browser identity.
 
 Legibility, tone and willingness to contribute require human judgement. Desktop and narrow-screen inspection can reveal clipping or awkward controls, but a real workshop still needs to test whether the prompts feel useful. This first version requires a refresh to see other people's additions. Real-time updates are a later milestone; the interface does not claim they already exist.
 
 ## Running it
 
-Use Node 24 and pnpm 11 or later. Run `pnpm install`, then `pnpm start`. The default address is `http://localhost:8080`. Run `pnpm check` with the server running, followed by `pnpm check:evidence`. Locally, data is stored in the ignored `data/` directory; the container uses `/data`. These directories must be retained to keep the wall.
+Visit [the live wall](https://comp4020-final-ryoudoteinei.fly.dev/). For local development, use Node 24 and pnpm 11 or later. Run `pnpm install`, then `pnpm start`. The default address is `http://localhost:8080`. Run `pnpm check` with the server running, followed by `pnpm check:evidence`. Locally, data is stored in the ignored `data/` directory; the container uses `/data`. These directories must be retained to keep the wall.
