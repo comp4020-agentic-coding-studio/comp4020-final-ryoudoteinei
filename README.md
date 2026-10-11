@@ -18,7 +18,7 @@ The [final project brief](https://comp.anu.edu.au/courses/comp4020-agentic-codin
 
 The server validates note length and category, saves acknowledged writes to SQLite, and checks ownership before deletion. Automated tests exercise two visitors, unsafe markup, invalid submissions, and persistence after restarting the application. The database lives on Fly's persistent volume. A deployment check also saved a temporary note, restarted the actual Fly machine, verified the note survived, and removed it using its original browser identity.
 
-Legibility, tone and willingness to contribute require human judgement. Desktop and narrow-screen inspection can reveal clipping or awkward controls, but a real workshop still needs to test whether the prompts feel useful. This first version requires a refresh to see other people's additions. Real-time updates are a later milestone; the interface does not claim they already exist.
+Published additions and deletions now update other connected pages automatically, targeting about one second on a healthy connection. Unsubmitted drafts remain local and are never broadcast. Reconnection reads the latest saved wall rather than replaying obsolete events. Incoming updates preserve the composer, cursor and draft. We accept that inserting new notes can shift the wall while protecting the act of writing. Legibility, tone and willingness to contribute still require human judgement in a real workshop; automated checks cannot establish those qualities.
 
 ## Running it
 

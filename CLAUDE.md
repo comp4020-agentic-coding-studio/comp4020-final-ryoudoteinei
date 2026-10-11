@@ -16,6 +16,11 @@ Read README.md before changing behaviour. This is a public studio wall for a sma
 
 ## Workflow and completion
 
+- C9 follows docs/decisions/001-live-wall-local-drafts.md: publish committed changes live; keep unfinished drafts local. Never refresh the whole document in response to a remote event.
+- Reconnection must fetch the current authoritative snapshot, including deletions. Preserve composer values, focus and selection while updating the shared wall.
+- Broadcast only invalidation notices. Snapshots must apply the receiving browser's ownership, filter and page selection. Never broadcast one user's personalised HTML to everybody.
+- Keep SSE heartbeats and disconnect cleanup. On shutdown close streams so redeploys can finish. Failed snapshot requests must retry even if no subsequent note is posted.
+
 Keep commits small and cite actual commits in PROCESS.md. Record the agent's proposals as proposals; do not invent student feedback, peer testing, or personal experiences. Review README and reflection language with the student before submission.
 
 After server changes run pnpm check against a running local app; include regression tests for broken persistence or ownership promises. Run pnpm check:evidence after documentation changes. Inspect browser behaviour when changing interactive controls. CI/container and live-Fly verification remain separate from local testing.
