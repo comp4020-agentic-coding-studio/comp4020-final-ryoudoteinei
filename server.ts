@@ -18,6 +18,16 @@ db.exec(`PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;
 type Note = { id: string; owner?: string; name: string; kind: string; body: string; created: string; mine?: boolean };
 const escape = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 const kinds = ['idea', 'question', 'discovery'];
+const subscribers = new Set<ServerResponse>();
+function changed() {
+  for (const client of subscribers) {
+    if (!client.write('event: changed\ndata: {}\n\n')) client.destroy();
+  }
+}
+function selection(url: URL) {
+  const f = url.searchParams.get('filter') || 'all';
+  return { filter: ['all', 'mine', ...kinds].includes(f) ? f : 'all', page: Math.min(100000, Math.max(1, Number.parseInt(url.searchParams.get('page') || '1', 10) || 1)) };
+}
 function identity(req: IncomingMessage, res: ServerResponse) {
   let token = req.headers.cookie?.match(/(?:^|;\s*)commonplace=([a-f0-9]{64})(?:;|$)/)?.[1];
   if (!token) {
@@ -41,7 +51,7 @@ function layout(title: string, body: string) {
 function home(owner: string, filter: string, page: number) {
   const { notes, more } = list(owner, filter, page);
   const count = (db.prepare('SELECT COUNT(*) AS total FROM notes').get() as { total: number }).total;
-  return layout('The wall', `<main id="main"><section class="intro"><div><p class="eyebrow">AN OPEN NOTEBOOK FOR A SMALL GROUP</p><h1>Good things start<br>with <em>a little note.</em></h1><p class="intro-copy">An unfinished idea. A question for the room. Something worth passing on.<br>Leave it here for the next person.</p></div><div class="intro-mark" aria-hidden="true"><span>Room for<br>one more<br><em>thought.</em></span><b>↙</b></div></section><div class="workspace"><aside class="composer" aria-labelledby="compose-title"><p class="eyebrow">YOUR CONTRIBUTION</p><h2 id="compose-title">Leave a little <br>something.</h2><form id="note-form"><label for="name">A name to leave it under</label><input id="name" name="name" maxlength="30" required placeholder="Your name or a pseudonym" autocomplete="nickname"><fieldset><legend>What kind of thought?</legend><div class="kind-choices">${kinds.map((kind, i) => `<label><input type="radio" name="kind" value="${kind}" ${i === 0 ? 'checked' : ''}><span>${kind}</span></label>`).join('')}</div></fieldset><label for="body">Your note</label><textarea id="body" name="body" maxlength="400" rows="6" required placeholder="What have you been thinking about?" aria-describedby="note-help counter"></textarea><div class="field-meta"><span id="note-help">Visible to everyone who visits.</span><output id="counter" for="body">0 / 400</output></div><button class="submit" type="submit">Pin to the wall <span aria-hidden="true">↗</span></button><p id="form-error" role="alert"></p></form><p class="composer-foot">Your note stays when you leave. This browser remembers which notes are yours; clearing cookies loses that connection.</p><noscript><p>Enable JavaScript to add or remove a note. You can still read the wall.</p></noscript></aside><section class="wall" aria-labelledby="wall-title"><div class="wall-heading"><div><p class="eyebrow">THINKING OUT LOUD, TOGETHER</p><h2 id="wall-title">On the wall <span class="count">${count}</span></h2></div><a class="refresh" href="/?filter=${escape(filter)}">Refresh ↻</a></div><nav class="filters" aria-label="Filter notes">${['all', ...kinds, 'mine'].map(f => `<a href="/?filter=${f}" ${f === filter ? 'aria-current="page"' : ''}>${f === 'mine' ? 'My notes' : f === 'all' ? 'Everything' : f}</a>`).join('')}</nav><div class="notes">${notes.length ? notes.map(card).join('') : `<div class="empty"><span aria-hidden="true">✳</span><h3>${filter === 'all' ? 'Every wall starts somewhere.' : 'A little space to fill.'}</h3><p>${filter === 'all' ? 'Be the first to leave a thought. A small beginning is enough.' : 'No notes here yet. Try another filter or add your own.'}</p></div>`}</div><nav class="pagination" aria-label="Pages">${page > 1 ? `<a href="/?filter=${escape(filter)}&page=${page - 1}">← Newer notes</a>` : ''}${more ? `<a href="/?filter=${escape(filter)}&page=${page + 1}">Older notes →</a>` : ''}</nav><p class="wall-foot">A public wall, best shared with a small circle. Refresh to see what others have added.</p></section></div></main>`);
+  return layout('The wall', `<main id="main"><section class="intro"><div><p class="eyebrow">AN OPEN NOTEBOOK FOR A SMALL GROUP</p><h1>Good things start<br>with <em>a little note.</em></h1><p class="intro-copy">An unfinished idea. A question for the room. Something worth passing on.<br>Leave it here for the next person.</p></div><div class="intro-mark" aria-hidden="true"><span>Room for<br>one more<br><em>thought.</em></span><b>↙</b></div></section><div class="workspace"><aside class="composer" aria-labelledby="compose-title"><p class="eyebrow">YOUR CONTRIBUTION</p><h2 id="compose-title">Leave a little <br>something.</h2><form id="note-form"><label for="name">A name to leave it under</label><input id="name" name="name" maxlength="30" required placeholder="Your name or a pseudonym" autocomplete="nickname"><fieldset><legend>What kind of thought?</legend><div class="kind-choices">${kinds.map((kind, i) => `<label><input type="radio" name="kind" value="${kind}" ${i === 0 ? 'checked' : ''}><span>${kind}</span></label>`).join('')}</div></fieldset><label for="body">Your note</label><textarea id="body" name="body" maxlength="400" rows="6" required placeholder="What have you been thinking about?" aria-describedby="note-help counter"></textarea><div class="field-meta"><span id="note-help">Visible to everyone who visits.</span><output id="counter" for="body">0 / 400</output></div><button class="submit" type="submit">Pin to the wall <span aria-hidden="true">↗</span></button><p id="form-error" role="alert"></p></form><p class="composer-foot">Your note stays when you leave. This browser remembers which notes are yours; clearing cookies loses that connection.</p><noscript><p>Enable JavaScript to add or remove a note. You can still read the wall.</p></noscript></aside><section class="wall" aria-labelledby="wall-title"><div class="wall-heading"><div><p class="eyebrow">THINKING OUT LOUD, TOGETHER</p><h2 id="wall-title">On the wall <span class="count">${count}</span></h2></div><span id="connection" role="status">Connecting…</span><a class="refresh" href="/?filter=${escape(filter)}">Refresh ↻</a></div><nav class="filters" aria-label="Filter notes">${['all', ...kinds, 'mine'].map(f => `<a href="/?filter=${f}" ${f === filter ? 'aria-current="page"' : ''}>${f === 'mine' ? 'My notes' : f === 'all' ? 'Everything' : f}</a>`).join('')}</nav><div class="notes">${notes.length ? notes.map(card).join('') : `<div class="empty"><span aria-hidden="true">✳</span><h3>${filter === 'all' ? 'Every wall starts somewhere.' : 'A little space to fill.'}</h3><p>${filter === 'all' ? 'Be the first to leave a thought. A small beginning is enough.' : 'No notes here yet. Try another filter or add your own.'}</p></div>`}</div><nav class="pagination" aria-label="Pages">${page > 1 ? `<a href="/?filter=${escape(filter)}&page=${page - 1}">← Newer notes</a>` : ''}${more ? `<a href="/?filter=${escape(filter)}&page=${page + 1}">Older notes →</a>` : ''}</nav><p class="wall-foot">A public wall, best shared with a small circle. Notes update live. Your unfinished draft stays yours.</p></section></div></main>`);
 }
 // Escape HTML before rendering the limited Markdown used in README.
 function markdown(md: string) {
@@ -67,6 +77,25 @@ const server = createServer(async (req, res) => {
       res.end(readFileSync(resolve('public', url.pathname.slice(1)))); return;
     }
     const owner = identity(req, res);
+    if (req.method === 'GET' && url.pathname === '/api/events') {
+      res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache, no-transform', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
+      res.write('retry: 1000\nevent: changed\ndata: {}\n\n');
+      subscribers.add(res);
+      const heartbeat = setInterval(() => res.write(': heartbeat\n\n'), 15000);
+      res.on('close', () => { clearInterval(heartbeat); subscribers.delete(res); });
+      return;
+    }
+    if (req.method === 'GET' && url.pathname === '/api/wall') {
+      const { filter, page } = selection(url);
+      const { notes, more } = list(owner, filter, page);
+      const total = (db.prepare('SELECT COUNT(*) AS total FROM notes').get() as { total: number }).total;
+      const id = url.searchParams.get('note');
+      if (id) {
+        const n = db.prepare('SELECT * FROM notes WHERE id = ?').get(id) as Note | undefined;
+        send(res, 200, { html: n ? card({ ...n, mine: n.owner === owner }) : '', total });
+      } else send(res, 200, { html: notes.map(card).join(''), total, more });
+      return;
+    }
     if (req.method === 'GET' && url.pathname === '/') {
       const filter = url.searchParams.get('filter') || 'all';
       const page = Math.min(100000, Math.max(1, Number.parseInt(url.searchParams.get('page') || '1', 10) || 1));
@@ -89,6 +118,7 @@ const server = createServer(async (req, res) => {
         const id = url.pathname.match(/^\/api\/notes\/([a-f0-9-]{36})$/)?.[1];
         if (!id) { send(res, 404, { error: 'Note not found.' }); return; }
         const result = db.prepare('DELETE FROM notes WHERE id = ? AND owner = ?').run(id, owner);
+        if (result.changes) changed();
         send(res, result.changes ? 200 : 404, result.changes ? { ok: true } : { error: 'Only the original browser can remove this note.' }); return;
       }
       if (url.pathname !== '/api/notes') { send(res, 404, { error: 'Not found.' }); return; }
@@ -103,6 +133,7 @@ const server = createServer(async (req, res) => {
       if (recent.count >= 10) { res.setHeader('Retry-After', '60'); send(res, 429, { error: 'Give the wall a moment. Try again in a minute.' }); return; }
       const n = { id: randomUUID(), name: data.name.trim(), body: data.body.trim(), kind: data.kind, created: new Date().toISOString() };
       db.prepare('INSERT INTO notes (id,owner,name,kind,body,created) VALUES (?,?,?,?,?,?)').run(n.id, owner, n.name, n.kind, n.body, n.created);
+      changed();
       send(res, 201, { ...n, mine: true }); return;
     }
     send(res, 404, { error: 'Not found.' });
@@ -110,4 +141,7 @@ const server = createServer(async (req, res) => {
 });
 server.requestTimeout = 15000;
 server.listen(Number(process.env.PORT || 8080), process.env.HOST || '0.0.0.0', () => console.log(`Commonplace listening on ${process.env.PORT || 8080}`));
-for (const signal of ['SIGTERM', 'SIGINT'] as const) process.on(signal, () => server.close(() => { db.close(); process.exit(0); }));
+for (const signal of ['SIGTERM', 'SIGINT'] as const) process.on(signal, () => {
+  for (const client of subscribers) client.end();
+  server.close(() => { db.close(); process.exit(0); });
+});
