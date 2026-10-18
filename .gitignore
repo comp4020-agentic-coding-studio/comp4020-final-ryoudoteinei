@@ -1,6 +1,7 @@
 node_modules/
 dist/
 data/
+admin-credentials.local.txt
 *.log
 
 # editor and OS junk

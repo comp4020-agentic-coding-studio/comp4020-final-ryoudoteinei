@@ -5,6 +5,8 @@ The user explicitly redirected the project from Commonplace to a fictional aucti
 ## Non-negotiable behaviour
 
 - All money is fictional. No payments, deposits, withdrawals, purchased credits or cash prizes.
+- Additional issued credit requires a random single-use key. Only a server-verified admin can mint keys. Store key hashes, credit only the stored amount, and redeem atomically once. Never expose raw keys in logs or key-history responses.
+- Admin accounts are provisioned through trusted operator shell only. Registration must never accept an admin role; no public bootstrap or promotion route.
 - Grant exactly 1,000 credits on successful account creation, never again on login. Do not overwrite previous accounts or assets on deployment.
 - Keep the course's Fly machine, volume and port unchanged. auction.sqlite belongs under DATA_DIR (/data in production). Retain the old commonplace.sqlite rather than deleting it.
 - Use parameterised SQL and transactions for reservations, refunds, settlement and pawn payouts. Balances cannot be negative. One lot can settle and pay out only once.

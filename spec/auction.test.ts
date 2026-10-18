@@ -23,7 +23,8 @@ async function house(duration=1800) {
   const post=(path:string,data:unknown,cookie='')=>fetch(base+path,{method:'POST',headers:{cookie,'Content-Type':'application/json'},body:JSON.stringify(data)});
   const register=async(name:string)=>{const r=await post('/api/register',{name,password:'test-passphrase-09'});expect(r.status).toBe(200);return r.headers.get('set-cookie')!.split(';')[0];};
   const appraisal=(id:number)=>{const reader=new DatabaseSync(join(dir,'auction.sqlite'),{readOnly:true});try{return (reader.prepare('SELECT valuation FROM lots WHERE id=?').get(id) as {valuation:number}).valuation;}finally{reader.close();}};
-  return {base,get,post,register,stop,start,appraisal,logs:()=>logs,close:async()=>{await stop();await rm(dir,{recursive:true,force:true});}};
+  const promote=(name:string)=>{const writer=new DatabaseSync(join(dir,'auction.sqlite'));try{writer.prepare("UPDATE members SET role='admin' WHERE name=?").run(name);}finally{writer.close();}};
+  return {base,get,post,register,stop,start,appraisal,promote,logs:()=>logs,close:async()=>{await stop();await rm(dir,{recursive:true,force:true});}};
 }
 
 it('runs registration, competing bids, one settlement and one blind pawn payout without leaking private state',async()=>{
@@ -62,6 +63,29 @@ it('runs registration, competing bids, one settlement and one blind pawn payout 
     const returned=login.headers.get('set-cookie')!.split(';')[0];expect((await h.get(returned)).me.balance).toBe((await h.get(a)).me.balance);
     expect((await h.post('/api/register',{name:'ALICE',password:'test-passphrase-09'})).status).toBe(409);
     expect(h.logs()).toContain('B0001');expect(h.logs()).toContain('B0002');expect(h.logs()).toContain('auction.won');expect(h.logs()).toContain('pawn.sold');expect(h.logs()).toContain('denied');expect(h.logs()).not.toContain('test-passphrase-09');
+  }finally{await h.close();}
+},15000);
+
+it('restricts key issuance to admins and credits a one-use key only once across concurrent redemption and restart',async()=>{
+  const h=await house(10000);
+  try{
+    const admin=await h.register('issuer'),b=await h.register('redeemer'),c=await h.register('otheruser');
+    expect((await h.post('/api/admin/keys',{amount:500,role:'admin'},b)).status).toBe(403);
+    expect((await fetch(h.base+'/api/admin/keys',{headers:{cookie:b}})).status).toBe(403);
+    expect((await fetch(h.base+'/api/admin/keys')).status).toBe(401);
+    h.promote('issuer');
+    expect((await h.get(admin)).me.role).toBe('admin');
+    expect((await h.post('/api/admin/keys',{amount:-1},admin)).status).toBe(400);
+    const issued=await h.post('/api/admin/keys',{amount:500},admin);expect(issued.status).toBe(200);const key=await issued.json();expect(key.code).toMatch(/^IAH-[A-F0-9]{32}$/);
+    const listing=await(await fetch(h.base+'/api/admin/keys',{headers:{cookie:admin}})).json();expect(listing.keys[0].amount).toBe(500);expect(JSON.stringify(listing)).not.toContain(key.code);expect(JSON.stringify(await h.get(b))).not.toContain(key.code);
+    const attempts=await Promise.all([h.post('/api/redeem',{code:key.code,amount:99999},b),h.post('/api/redeem',{code:key.code},c)]);
+    expect(attempts.map(r=>r.status).sort()).toEqual([200,409]);
+    expect((await h.get(b)).me.balance+(await h.get(c)).me.balance).toBe(2500);
+    expect((await h.post('/api/redeem',{code:'IAH-'+'0'.repeat(32)},b)).status).toBe(409);
+    await h.stop();await h.start();
+    expect((await h.post('/api/redeem',{code:key.code},admin)).status).toBe(409);
+    expect((await h.get(b)).me.balance+(await h.get(c)).me.balance).toBe(2500);
+    expect(h.logs()).toContain('credit_key.redeemed');expect(h.logs()).not.toContain(key.code);
   }finally{await h.close();}
 },15000);
 

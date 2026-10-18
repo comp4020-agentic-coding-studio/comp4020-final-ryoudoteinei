@@ -3,7 +3,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { readFileSync } from 'node:fs';
 import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
-import { bid, pawn, register, session, memberFor, digest, denied, state, tick, db, Fault, paddle } from './auction.ts';
+import { bid, pawn, register, session, memberFor, digest, denied, state, tick, db, Fault, paddle, createCreditKey,creditKeys,redeemCreditKey } from './auction.ts';
 import type { Member } from './auction.ts';
 const scrypt = promisify(scryptCallback);
 const streams = new Set<ServerResponse>();
@@ -46,6 +46,7 @@ const server=createServer(async(req,res)=>{
       const heartbeat=setInterval(()=>res.write(': heartbeat\n\n'),15000);res.on('close',()=>{clearInterval(heartbeat);streams.delete(res);});return;
     }
     if(req.method==='GET' && url.pathname==='/api/state'){if(tick())changed();send(res,200,state(member));return;}
+    if(req.method==='GET' && url.pathname==='/api/admin/keys'){if(!member)throw new Fault(401,'Sign in first.');send(res,200,{keys:creditKeys(member)});return;}
     if(req.method!=='POST')throw new Fault(404,'Not found.');
     if(!req.headers['content-type']?.startsWith('application/json'))throw new Fault(415,'Send application/json.');
     if(req.headers.origin && new URL(req.headers.origin).host!==req.headers.host)throw new Fault(403,'Use this website to make changes.');
@@ -68,6 +69,8 @@ const server=createServer(async(req,res)=>{
       const token=cookieToken(req);if(token)db.prepare('DELETE FROM sessions WHERE token=?').run(digest(token));setSession(res,'');send(res,200,{ok:true});return;
     }
     if(!member){denied(null,'auth.required',url.pathname,'Sign in before making changes.');throw new Fault(401,'Register or sign in to take part.');}
+    if(url.pathname==='/api/admin/keys'){send(res,200,createCreditKey(member,data.amount));return;}
+    if(url.pathname==='/api/redeem'){limit(req);const result=redeemCreditKey(member,data.code);changed();send(res,200,result);return;}
     const match=url.pathname.match(/^\/api\/lots\/(\d+)\/(bid|pawn)$/);
     if(!match)throw new Fault(404,'Not found.');
     if(tick())changed();const id=Number(match[1]);

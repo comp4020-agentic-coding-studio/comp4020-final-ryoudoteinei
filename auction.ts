@@ -4,7 +4,7 @@ import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 export class Fault extends Error { status: number; constructor(status: number, message: string) { super(message); this.status = status; } }
-export type Member = { id: number; name: string; password: string; salt: string; balance: number };
+export type Member = { id: number; name: string; password: string; salt: string; balance: number; role: string };
 type Lot = { id: number; title: string; description: string; category: string; edition: number; valuation: number; status: string; price: number; bidder: number | null; ends: number | null; owner: number | null; payout: number | null };
 const dir = resolve(process.env.DATA_DIR || 'data'); mkdirSync(dir, { recursive: true });
 export const db = new DatabaseSync(resolve(dir, 'auction.sqlite'));
@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS bids(id INTEGER PRIMARY KEY, lot INTEGER NOT NULL REF
 CREATE TABLE IF NOT EXISTS ledger(id INTEGER PRIMARY KEY, member INTEGER NOT NULL REFERENCES members(id), delta INTEGER NOT NULL, action TEXT NOT NULL, lot INTEGER, at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY, at INTEGER NOT NULL, actor TEXT NOT NULL, action TEXT NOT NULL, target TEXT NOT NULL, outcome TEXT NOT NULL, detail TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS lots_status ON lots(status);`);
+if(!(db.prepare('PRAGMA table_info(members)').all() as {name:string}[]).some(c=>c.name==='role'))db.exec("ALTER TABLE members ADD COLUMN role TEXT NOT NULL DEFAULT 'collector' CHECK(role IN ('collector','admin'))");
+db.exec(`CREATE TABLE IF NOT EXISTS credit_keys(id INTEGER PRIMARY KEY, hash TEXT UNIQUE NOT NULL, amount INTEGER NOT NULL CHECK(amount>0), issuer INTEGER NOT NULL REFERENCES members(id), created INTEGER NOT NULL, expires INTEGER NOT NULL, redeemed_by INTEGER REFERENCES members(id), redeemed_at INTEGER);`);
 export const paddle = (id: number) => `B${String(id).padStart(4, '0')}`;
 export const digest = (token: string) => createHash('sha256').update(token).digest('hex');
 function log(actor: number | null, action: string, target: string, outcome: string, detail: Record<string, unknown> = {}) {
@@ -136,7 +138,7 @@ export function pawn(member: Member, id: number) {
 }
 export function state(member: Member | null | undefined) {
   const visible = db.prepare("SELECT l.id,l.title,l.description,l.category,l.edition,l.status,l.price,l.ends,m.name bidder_name,m.id bidder_id FROM lots l LEFT JOIN members m ON m.id=l.bidder WHERE l.status='live' ORDER BY l.id").all();
-  const me = member ? db.prepare('SELECT id,name,balance FROM members WHERE id=?').get(member.id) : null;
+  const me = member ? db.prepare('SELECT id,name,balance,role FROM members WHERE id=?').get(member.id) : null;
   const collection = member ? db.prepare("SELECT id,title,description,category,edition,status,price,payout FROM lots WHERE owner=? ORDER BY id DESC").all(member.id) : [];
   const ledger = member ? db.prepare('SELECT id,delta,action,lot,at FROM ledger WHERE member=? ORDER BY id DESC LIMIT 40').all(member.id) : [];
   const held = member ? (db.prepare("SELECT COALESCE(sum(price),0) amount FROM lots WHERE status='live' AND bidder=?").get(member.id) as {amount:number}).amount : 0;
@@ -145,3 +147,29 @@ export function state(member: Member | null | undefined) {
   return {now:Date.now(),me:me ? {...me,paddle:paddle(member!.id),held} : null,lots:visible,collection,ledger,upcoming,pool};
 }
 tick();
+
+export function createCreditKey(member:Member,amount:unknown){
+  if(member.role!=='admin'){denied(member.id,'credit_key.create','keys','Administrator access required.');throw new Fault(403,'Only the administrator can generate credit keys.');}
+  if(!Number.isSafeInteger(amount)||(amount as number)<1||(amount as number)>100000)throw new Fault(400,'Choose a whole credit amount between 1 and 100,000.');
+  const code='IAH-'+randomBytes(16).toString('hex').toUpperCase();
+  const result=transaction(member.id,'credit_key.created','keys',()=>{
+    const expires=Date.now()+7*86400000;
+    const row=db.prepare('INSERT INTO credit_keys(hash,amount,issuer,created,expires) VALUES (?,?,?,?,?)').run(digest(code),amount as number,member.id,Date.now(),expires);
+    return {id:Number(row.lastInsertRowid),amount,expires};
+  });
+  return {...result,code};
+}
+export function creditKeys(member:Member){
+  if(member.role!=='admin')throw new Fault(403,'Only the administrator can view credit keys.');
+  return db.prepare('SELECT k.id,k.amount,k.created,k.expires,k.redeemed_at,m.name redeemed_by FROM credit_keys k LEFT JOIN members m ON m.id=k.redeemed_by ORDER BY k.id DESC LIMIT 50').all();
+}
+export function redeemCreditKey(member:Member,code:unknown){
+  return transaction(member.id,'credit_key.redeemed','wallet',()=>{
+    if(typeof code!=='string'||!/^IAH-[A-F0-9]{32}$/.test(code.trim().toUpperCase()))throw new Fault(400,'Enter a valid credit key.');
+    const key=db.prepare('SELECT * FROM credit_keys WHERE hash=?').get(digest(code.trim().toUpperCase())) as {id:number;amount:number;expires:number;redeemed_by:number|null}|undefined;
+    if(!key||key.redeemed_by!==null||key.expires<=Date.now())throw new Fault(409,'This credit key is invalid, expired or already redeemed.');
+    db.prepare('UPDATE credit_keys SET redeemed_by=?,redeemed_at=? WHERE id=? AND redeemed_by IS NULL').run(member.id,Date.now(),key.id);
+    movement(member.id,key.amount,'key.redemption');
+    return {ok:true,amount:key.amount};
+  });
+}
