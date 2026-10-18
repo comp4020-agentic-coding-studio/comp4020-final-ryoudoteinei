@@ -1,117 +1,46 @@
-const form = document.querySelector('#note-form');
-const status = document.querySelector('#status');
-const connection = document.querySelector('#connection');
-const tell = message => { status.textContent = message; };
-const wall = document.querySelector('.notes');
-const detail = document.querySelector('.single-note');
-const detailId = location.pathname.match(/^\/notes\/([a-f0-9-]{36})$/)?.[1];
-let stream, refreshing = false, pending = false;
-let lastSnapshot = '';
-
-// Reconcile only the shared surface. Never replace the composer or unchanged
-// cards: an incoming note must not erase a draft, move focus, or reset a delete confirmation.
-function render(snapshot) {
-  const target = wall || detail;
-  if (!target) return;
-  const template = document.createElement('template');
-  template.innerHTML = snapshot.html; // HTML is escaped by the server's card renderer.
-  const incoming = [...template.content.querySelectorAll('.note')];
-  const ids = new Set(incoming.map(note => note.id));
-  target.querySelectorAll('.note').forEach(note => { if (!ids.has(note.id)) note.remove(); });
-  target.querySelectorAll('.empty, .removed-note').forEach(node => node.remove());
-  if (wall) {
-    incoming.forEach((note, index) => {
-      const existing = document.getElementById(note.id);
-      const item = existing || note;
-      if (wall.children[index] !== item) wall.insertBefore(item, wall.children[index] || null);
-    });
-    if (!incoming.length) {
-      const empty = document.createElement('div'); empty.className = 'empty';
-      const heading = document.createElement('h3'); heading.textContent = 'A little space to fill.';
-      const copy = document.createElement('p'); copy.textContent = 'No notes in this view yet. Add a thought or try another filter.';
-      empty.append(heading, copy); wall.append(empty);
-    }
-    document.querySelector('.count').textContent = snapshot.total;
-    const params = new URLSearchParams(location.search);
-    const page = Math.max(1, Number.parseInt(params.get('page') || '1', 10) || 1);
-    const pagination = document.querySelector('.pagination'); pagination.replaceChildren();
-    const addPage = (number, label) => {
-      const query = new URLSearchParams({ filter: params.get('filter') || 'all', page: String(number) });
-      const link = document.createElement('a'); link.href = `/?${query}`; link.textContent = label; pagination.append(link);
-    };
-    if (page > 1) addPage(page - 1, '← Newer notes');
-    if (snapshot.more) addPage(page + 1, 'Older notes →');
-  } else if (!incoming.length) {
-    const message = document.createElement('p'); message.className = 'removed-note';
-    message.textContent = 'The author removed this note.'; detail.insertBefore(message, detail.lastElementChild);
+const $ = selector => document.querySelector(selector);
+const esc = value => String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+const money = n => '$'+Number(n).toLocaleString('en-US');
+let snapshot, offset=0, refreshing=false, pending=false, login=false, pawnId=null, toastTimer;
+function tell(text){$('#status').textContent=text;clearTimeout(toastTimer);toastTimer=setTimeout(()=>{$('#status').textContent='';},7000);}
+async function request(path,data){const response=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const result=await response.json();if(!response.ok)throw new Error(result.error||'Request failed.');return result;}
+function auth(){ $('#auth-dialog').showModal(); }
+function mode(){ $('#auth-title').innerHTML=login?'Welcome <em>back.</em>':'Become a <em>collector.</em>';$('#auth-copy').textContent=login?'Sign in to recover your balance and collection.':'Register once. Receive $1,000 in fictional house credit.';$('#auth-form button').textContent=login?'Sign in ↗':'Register & receive $1,000 ↗';$('#auth-mode').textContent=login?'New to the house? Register':'Already a collector? Sign in';$('#password').autocomplete=login?'current-password':'new-password';$('#auth-error').textContent='';}
+$('#account').addEventListener('click',async()=>{if(!snapshot?.me)auth();else{await request('/api/logout',{});await refresh();tell('Signed out. Your collection stays with your account.');}});
+$('#auth-mode').addEventListener('click',()=>{login=!login;mode();});
+document.addEventListener('click',event=>{if(event.target.closest('[data-auth]'))auth();if(event.target.closest('[data-close]'))event.target.closest('dialog').close();});
+$('#auth-form').addEventListener('submit',async event=>{event.preventDefault();const button=event.target.querySelector('button');button.disabled=true;$('#auth-error').textContent='';try{await request(login?'/api/login':'/api/register',Object.fromEntries(new FormData(event.target)));$('#auth-dialog').close();event.target.reset();await refresh();tell(login?'Welcome back to the house.':'Your paddle is ready. $1,000 has been credited.');}catch(err){$('#auth-error').textContent=err.message;}finally{button.disabled=false;}});
+function lotHTML(l){return `<article class="lot" id="lot-${l.id}"><div class="lot-art ${esc(l.category)}"><span class="lot-number">LOT ${String(l.id).padStart(3,'0')}</span><div class="relic" aria-hidden="true"><div class="relic-orbit"></div><div class="relic-core"></div><div class="relic-line"></div></div><span class="art-label">${esc(l.category.toUpperCase())} / EDITION ${String(l.edition).padStart(2,'0')}</span></div><div class="lot-copy"><div class="lot-top"><span>APPRAISAL SEALED</span><time data-end="${l.ends}">—</time></div><h3>${esc(l.title)}</h3><p>${esc(l.description)}</p><div class="price-line"><span>CURRENT BID<strong data-price>${l.price?money(l.price):'No bids yet'}</strong></span><span class="leader" data-leader>${l.bidder_id?'Paddle B'+String(l.bidder_id).padStart(4,'0')+'<br>'+esc(l.bidder_name):'Be the first<br>to raise a paddle'}</span></div><form class="bid-form" data-bid="${l.id}"><label class="sr-only" for="bid-${l.id}">Your bid for ${esc(l.title)}</label><span class="currency">$</span><input id="bid-${l.id}" name="amount" type="number" inputmode="numeric" min="${l.price+10}" step="1" value="${l.price+10}" required aria-describedby="bid-error-${l.id}"><button class="button dark" type="submit">Place bid ↗</button><p id="bid-error-${l.id}" class="bid-error" role="alert"></p></form></div></article>`;}
+function render(s){
+  snapshot=s;offset=s.now-Date.now();
+  $('#account').textContent=s.me?'Sign out · '+s.me.paddle:'Register / Sign in ↗';
+  $('#wallet').hidden=!s.me;
+  if(s.me)$('#wallet').innerHTML=`<div><span class="eyebrow">YOUR PADDLE</span><strong>${esc(s.me.name)} <small>${esc(s.me.paddle)}</small></strong></div><div><span class="eyebrow">AVAILABLE CREDIT</span><strong>${money(s.me.balance)}</strong></div><div><span class="eyebrow">RESERVED IN LIVE BIDS</span><strong>${money(s.me.held)}</strong></div><span class="wallet-note">A balance of possibilities.<br>Fictional currency. Real decisions.</span>`;
+  const ids=new Set(s.lots.map(l=>'lot-'+l.id));
+  $('#lots').querySelectorAll('.lot').forEach(el=>{if(!ids.has(el.id))el.remove();});
+  $('#lots').querySelectorAll(':scope > p,.empty').forEach(el=>el.remove());
+  for(const l of s.lots){
+    let card=$('#lot-'+l.id);
+    if(!card){const t=document.createElement('template');t.innerHTML=lotHTML(l);card=t.content.firstElementChild;$('#lots').append(card);}
+    card.querySelector('[data-price]').textContent=l.price?money(l.price):'No bids yet';
+    card.querySelector('[data-leader]').textContent=l.bidder_id?'Paddle B'+String(l.bidder_id).padStart(4,'0')+' · '+l.bidder_name:'Be the first to raise a paddle';
+    card.querySelector('[data-end]').dataset.end=l.ends;
+    const input=card.querySelector('input');input.min=l.price+10;
+    if(document.activeElement!==input && Number(input.value)<=l.price)input.value=l.price+10;
+    card.classList.toggle('leading',s.me?.id===l.bidder_id);
   }
+  if(!s.lots.length)$('#lots').innerHTML='<div class="empty">The vault is taking a breath. All lots have been offered.</div>';
+  $('#pool').textContent=s.pool;
+  $('#upcoming').innerHTML=s.upcoming.map(l=>`<li><span>${String(l.id).padStart(3,'0')}</span><strong>${esc(l.title)}</strong><small>${esc(l.category)}</small></li>`).join('');
+  const collection=s.collection.filter(l=>l.status==='owned');
+  $('#collectibles').innerHTML=collection.length?collection.map(l=>`<article class="collectible"><span class="eyebrow">LOT ${String(l.id).padStart(3,'0')} · ${esc(l.category)}</span><h3>${esc(l.title)}</h3><p>${esc(l.description)}</p><div class="collected-price"><span>ACQUIRED FOR ${money(l.price)}</span><span>TRUE WORTH: SEALED</span></div><button class="button outline" data-pawn="${l.id}">Sell to the pawnshop ↗</button></article>`).join(''):`<div class="empty"><h3>${s.me?'Nothing here. Yet.':'A collection waiting to happen.'}</h3><p>${s.me?'Win a live auction to start your collection. Your winning bids settle automatically when the clock runs out.':'Register for $1,000 in house credit. Your winnings will appear here.'}</p>${!s.me?'<button class="text-button" data-auth>Become a collector ↗</button>':''}</div>`;
+  $('#ledger').innerHTML=s.me?(s.ledger.length?`<table><thead><tr><th>Entry</th><th>Lot</th><th>House credit</th></tr></thead><tbody>${s.ledger.map(r=>`<tr><td>${esc({'welcome':'Welcome grant','bid.reserve':'Bid reserved','bid.refund':'Outbid / reservation released','pawn.payout':'Pawnshop sale — appraisal revealed'}[r.action]||r.action)}</td><td>${r.lot?'#'+String(r.lot).padStart(3,'0'):'—'}</td><td class="${r.delta>=0?'credit':'debit'}">${r.delta>=0?'+':'−'}${money(Math.abs(r.delta))}</td></tr>`).join('')}</tbody></table>`:'No entries yet.'):'Sign in to see your credits, reservations and sales.';
+  countdown();
 }
-
-async function refreshWall() {
-  pending = true;
-  if (refreshing || (!wall && !detail)) return;
-  refreshing = true;
-  try {
-    while (pending) {
-      pending = false;
-      const query = new URLSearchParams(location.search);
-      if (detailId) query.set('note', detailId);
-      const response = await fetch(`/api/wall?${query}`, { signal: AbortSignal.timeout(10000) });
-      if (!response.ok) throw new Error('Wall unavailable');
-      const snapshot = await response.json();
-      const signature = JSON.stringify(snapshot);
-      if (signature !== lastSnapshot) { render(snapshot); lastSnapshot = signature; }
-      if (connection) connection.textContent = stream?.readyState === 1 ? '● Live' : 'Reconnecting…';
-    }
-  } catch {
-    if (connection) connection.textContent = 'Reconnecting… draft kept';
-    // A snapshot can fail while SSE remains healthy. Retry without waiting
-    // for another person to make a change.
-    setTimeout(refreshWall, 1500);
-  } finally { refreshing = false; }
-}
-
-if (wall || detail) {
-  stream = new EventSource('/api/events');
-  stream.addEventListener('changed', refreshWall);
-  stream.addEventListener('open', refreshWall);
-  stream.addEventListener('error', () => { if (connection) connection.textContent = 'Reconnecting… draft kept'; });
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshWall(); });
-  window.addEventListener('online', refreshWall);
-  document.querySelector('.refresh')?.addEventListener('click', event => { event.preventDefault(); refreshWall(); });
-}
-
-if (form) {
-  const body = form.elements.body;
-  const count = () => { document.querySelector('#counter').textContent = `${body.value.length} / 400`; };
-  body.addEventListener('input', count);
-  form.addEventListener('submit', async event => {
-    event.preventDefault();
-    const button = form.querySelector('button[type=submit]');
-    const error = document.querySelector('#form-error');
-    const data = Object.fromEntries(new FormData(form));
-    error.textContent = ''; button.disabled = true; button.textContent = 'Pinning…';
-    try {
-      const response = await fetch('/api/notes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Please try again.');
-      if (body.value === data.body) body.value = '';
-      count();
-      tell('Your note is pinned. It will be here when you return.');
-      await refreshWall();
-    } catch (err) { error.textContent = err.message || 'Connection lost. Your draft is still here.'; }
-    finally { button.disabled = false; button.innerHTML = 'Pin to the wall <span aria-hidden="true">↗</span>'; }
-  });
-}
-
-document.addEventListener('click', async event => {
-  const button = event.target.closest?.('[data-delete]');
-  if (!button || button.disabled) return;
-  if (button.dataset.confirm !== 'yes') { button.dataset.confirm = 'yes'; button.textContent = 'Remove for everyone? Click again'; return; }
-  button.disabled = true;
-  try {
-    const response = await fetch(`/api/notes/${button.dataset.delete}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' } });
-    if (!response.ok) throw new Error((await response.json()).error);
-    tell('Your note has been removed.'); await refreshWall();
-  } catch (error) { tell(error.message || 'Could not remove this note.'); button.disabled = false; }
-});
+function countdown(){document.querySelectorAll('[data-end]').forEach(el=>{const seconds=Math.max(0,Math.ceil((Number(el.dataset.end)-Date.now()-offset)/1000));el.textContent=seconds?String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0'):'Settling…';el.classList.toggle('ending',seconds<=15);});}
+setInterval(countdown,250);
+async function refresh(){pending=true;if(refreshing)return;refreshing=true;try{while(pending){pending=false;const res=await fetch('/api/state',{signal:AbortSignal.timeout(10000)});if(!res.ok)throw new Error();render(await res.json());$('#connection').textContent=events.readyState===1?'● LIVE SALEROOM':'RECONNECTING…';}}catch{$('#connection').textContent='RECONNECTING · YOUR INPUT IS KEPT';setTimeout(refresh,1500);}finally{refreshing=false;}}
+const events=new EventSource('/api/events');events.addEventListener('changed',refresh);events.addEventListener('open',refresh);events.addEventListener('error',()=>{$('#connection').textContent='RECONNECTING · YOUR INPUT IS KEPT';});window.addEventListener('online',refresh);document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();});refresh();
+document.addEventListener('submit',async event=>{const form=event.target.closest('[data-bid]');if(!form)return;event.preventDefault();if(!snapshot?.me){auth();return;}const button=form.querySelector('button');button.disabled=true;const error=form.querySelector('.bid-error');error.textContent='';try{await request('/api/lots/'+form.dataset.bid+'/bid',{amount:Number(form.elements.amount.value)});tell('Bid accepted. Funds reserved until you are outbid or the sale ends.');await refresh();}catch(err){error.textContent=err.message;}finally{button.disabled=false;}});
+document.addEventListener('click',event=>{const button=event.target.closest('[data-pawn]');if(!button)return;pawnId=Number(button.dataset.pawn);const item=snapshot.collection.find(l=>l.id===pawnId);$('#pawn-title').textContent=item.title+' · bought for '+money(item.price);$('#pawn-error').textContent='';$('#pawn-dialog').showModal();});
+$('#pawn-confirm').addEventListener('click',async event=>{event.target.disabled=true;try{const result=await request('/api/lots/'+pawnId+'/pawn',{confirm:true});$('#pawn-dialog').close();$('#receipt').innerHTML=`<p>${esc(result.title)}</p><span class="eyebrow">THE HOUSE HAS PAID YOU</span><strong class="receipt-amount">${money(result.payout)}</strong><dl><div><dt>You paid</dt><dd>${money(result.paid)}</dd></div><div><dt>${result.profit>=0?'Your gain':'Your loss'}</dt><dd>${result.profit>=0?'+':'−'}${money(Math.abs(result.profit))}</dd></div></dl><p class="fine-print">Appraisal revealed. The item has left circulation. Its receipt remains in your ledger.</p>`;$('#result-dialog').showModal();await refresh();}catch(err){$('#pawn-error').textContent=err.message;}finally{event.target.disabled=false;}});
