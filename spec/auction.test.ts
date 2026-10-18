@@ -36,6 +36,9 @@ it('runs registration, competing bids, one settlement and one blind pawn payout 
     expect((await h.post('/api/lots/'+lot.id+'/bid',{amount:10})).status).toBe(401);
     expect((await h.post('/api/lots/'+lot.id+'/bid',{amount:10},a)).status).toBe(200);
     expect((await h.get(a)).me).toMatchObject({balance:990,held:10});
+    const otherLot=initial.lots[1].id;
+    expect((await h.post('/api/lots/'+otherLot+'/bid',{amount:995},a)).status).toBe(409);
+    expect((await h.get(a)).me.balance).toBe(990);
     expect((await h.post('/api/lots/'+lot.id+'/bid',{amount:1001},b)).status).toBe(409);
     expect((await h.post('/api/lots/'+lot.id+'/bid',{amount:20},b)).status).toBe(200);
     expect((await h.get(a)).me.balance).toBe(1000);
