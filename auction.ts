@@ -80,6 +80,11 @@ export function tick() {
     db.prepare('UPDATE lots SET status=?,owner=? WHERE id=? AND status=?').run(lot.bidder ? 'owned' : 'unsold', lot.bidder, lot.id, 'live');
     // The winning amount was already deducted at bid acceptance, never again at settlement.
   });
+  const remaining=(db.prepare("SELECT count(*) n FROM lots WHERE status='queued'").get() as {n:number}).n;
+  if(remaining<6)transaction(null,'vault.replenished','catalogue',()=>{
+    const edition=(db.prepare('SELECT max(edition) n FROM lots').get() as {n:number}).n+1;
+    for(const [title,description,category] of catalogue)db.prepare('INSERT INTO lots(title,description,category,edition,valuation,status) VALUES (?,?,?,?,?,?)').run(title,description,category,edition,randomInt(20,1601),'queued');
+  });
   const live = (db.prepare("SELECT count(*) n FROM lots WHERE status='live'").get() as {n:number}).n;
   const queue = db.prepare("SELECT id FROM lots WHERE status='queued' ORDER BY id LIMIT ?").all(3-live) as {id:number}[];
   for (let i=0;i<queue.length;i++) transaction(null, 'auction.opened', `lot:${queue[i].id}`, () => {
