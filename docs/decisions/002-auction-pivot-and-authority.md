@@ -4,7 +4,7 @@ Status: implemented for C10, 19 October 2026. Supersedes the note-wall product s
 
 ## Why change direction?
 
-The student judged Commonplace too ordinary and rejected the theme. The proposed auction of impossible objects prompted a more specific design from the student: a large preset pool, hidden true values, a one-time registration grant, bidding, ownership and a blind-sale pawnshop. The student reports that teaching staff permit a direction change if the process account explains it. This document records that reported permission, not an independently obtained approval or invented staff quotation.
+Commonplace supported live contributions but offered little reason for people to use it together. The auction introduces competing decisions: one person's bid changes another's options. Its core rules are a large preset pool, hidden true values, a one-time registration grant, bidding, ownership and a blind-sale pawnshop.
 
 The reason is substantive: co-presence should create a decision that would not exist alone. A competing bid changes what another player can afford and what they believe a fictional object is worth. The first implementation intentionally covers only register → bid → collect → pawn. Player-created listings and their listing fees are future work, so the unfinished market is not presented as delivered.
 

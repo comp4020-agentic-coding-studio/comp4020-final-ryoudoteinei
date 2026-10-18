@@ -4,7 +4,7 @@
 
 The project began as Commonplace, a shared wall for short ideas, questions and discoveries. C8 established a persistent interaction and C9 added live updates while preserving local drafts. Those were useful technical milestones, but I judged the theme too ordinary. I asked whether the application was essentially a message board and then explicitly rejected that direction. A working feature list had become a substitute for a reason to use the application with other people.
 
-I chose an auction of impossible objects from the agent's alternatives and developed its economic rules myself: a deep preset pool, hidden true values, a one-time registration grant of 1,000 fictional dollars, competitive bidding, owned collectibles and a pawnshop that reveals its payment only after sale. I reported that teaching staff allow a change of direction provided the process account explains why. This records my report; it does not invent correspondence or an independently verified approval.
+I chose an auction of impossible objects from the agent's alternatives and developed its economic rules myself: a deep preset pool, hidden true values, a one-time registration grant of 1,000 fictional dollars, competitive bidding, owned collectibles and a pawnshop that reveals its payment only after sale.
 
 The reason for the pivot is that co-presence now changes a decision. Another bidder alters what I can afford and what I am willing to pay. Hidden appraisal provides uncertainty the wall lacked. This remains a design hypothesis, not a completed group playtest. I subsequently requested administrator-issued recharge keys: server roles control issuance, and hashed keys expire and redeem once through a transaction. No public endpoint can promote an account.
 

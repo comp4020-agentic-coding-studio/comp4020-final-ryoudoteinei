@@ -20,7 +20,7 @@ The user explicitly redirected the project from Commonplace to a fictional aucti
 
 ## Workflow
 
-Use small commits and real evidence links. Document why the student rejected the first theme and requested this game; do not invent teaching-staff correspondence, peer feedback or completed usability studies. C8/C9 tags are historical snapshots and must not move.
+Use small commits and real evidence links. Document the design reasons for decisions. Background information given to the agent is not automatically submission content. Do not invent peer feedback or completed usability studies. C8/C9 tags are historical snapshots and must not move.
 
 Run pnpm check against a running app, including isolated temporary databases for economic tests, and pnpm check:evidence for documentation. Inspect desktop and phone layouts plus an actual register/bid/collect/pawn flow. A passing local suite does not prove a live deploy. Report verification limits honestly.
 
