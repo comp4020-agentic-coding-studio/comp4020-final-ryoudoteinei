@@ -6,7 +6,7 @@ Status: implemented for C10, 19 October 2026. Supersedes the note-wall product s
 
 Commonplace supported live contributions but offered little reason for people to use it together. The auction introduces competing decisions: one person's bid changes another's options. Its core rules are a large preset pool, hidden true values, a one-time registration grant, bidding, ownership and a blind-sale pawnshop.
 
-The reason is substantive: co-presence should create a decision that would not exist alone. A competing bid changes what another player can afford and what they believe a fictional object is worth. The first implementation intentionally covers only register → bid → collect → pawn. Player-created listings and their listing fees are future work, so the unfinished market is not presented as delivered.
+The reason is substantive: co-presence should create a decision that would not exist alone. A competing bid changes what another player can afford and what they believe a fictional object is worth. The first implementation intentionally covers only register → bid → collect → pawn. Player-created listings and their listing fees are planned for a later iteration.
 
 ## Alternatives and choice
 
@@ -26,4 +26,4 @@ A blind pawn sale requires explicit confirmation, credits the fixed appraisal on
 
 Paddles such as B0001 are visible on the account and accepted bids, and identify actors in JSON logs. Events include wallet.welcome, member.login, bid.accepted, auction.won, pawn.sold and rejected operations. Economic audit rows are durable alongside the ledger; successful events are emitted after commit. Credentials and sealed appraisals are excluded from pre-sale logs. Operators can tail logs and narrate two independent players without controlling the UI.
 
-The initial supply is sixteen authored concepts across six editions, each independently appraised, with automatic replenishment. Appraisals and auction duration are explicit prototype parameters. The game has no real-money economy, and registration grants can be obtained by creating another account; this is not an anti-Sybil system or a commercially balanced market. These costs are accepted for a small fictional game and require further playtesting rather than unsupported fairness claims.
+The initial supply is sixteen authored concepts across six editions, each independently appraised, with automatic replenishment. Appraisals and auction duration are explicit prototype parameters. The game uses fictional credit. Registration does not verify unique people, so one person can receive further grants by creating additional accounts. Group playtesting will inform the credit distribution and auction pacing.

@@ -1,6 +1,6 @@
 # Auction house development rules
 
-The user explicitly redirected the project from Commonplace to a fictional auction house. README.md is the current purpose; docs/decisions/002-auction-pivot-and-authority.md records the pivot and authority model. Older wall decisions and tests are historical evidence, not current product requirements.
+The current product is a fictional auction house. README.md is the current purpose; docs/decisions/002-auction-pivot-and-authority.md records the pivot and authority model. Older wall decisions and tests are historical evidence, not current product requirements.
 
 ## Non-negotiable behaviour
 
@@ -24,4 +24,4 @@ Use small commits and real evidence links. Document the design reasons for decis
 
 Run pnpm check against a running app, including isolated temporary databases for economic tests, and pnpm check:evidence for documentation. Inspect desktop and phone layouts plus an actual register/bid/collect/pawn flow. A passing local suite does not prove a live deploy. Report verification limits honestly.
 
-C10 includes separate browser profiles or incognito accounts and a terminal log narration. No tester should need a secret URL or a pre-provisioned account. The page must explain how to enter, the grant, the paddle and the pawn decision. Final A3 still requires human review of README's argument and process/reflection voice.
+C10 includes separate browser profiles or incognito accounts and a terminal log narration. No tester should need a secret URL or a pre-provisioned account. The page must explain how to enter, the grant, the paddle and the pawn decision. Keep the README's design argument consistent with the interface, server rules and tests.

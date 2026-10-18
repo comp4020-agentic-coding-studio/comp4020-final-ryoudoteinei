@@ -8,4 +8,4 @@ Let the two players bid on the same lot. Narrate the stable paddle, lot, bid acc
 
 Passwords, session cookies and pre-sale values must never appear in the logs. Economic audit events are also persisted in auction.sqlite on /data. The ledger and lots survive restarts. There is no public audit endpoint exposing everyone else's wallet.
 
-The operator explains the logs while the two players operate the website. Do not describe developer browser checks as an actual completed crit or peer evaluation. Review the reflection in your own voice before submission.
+The operator explains the logs while the two players operate the website. Match the public paddle identifiers on the players' pages to the actors in the logs.
