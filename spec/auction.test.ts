@@ -4,6 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createServer } from 'node:net';
+import { DatabaseSync } from 'node:sqlite';
 import { expect, it } from 'vitest';
 
 async function house(duration=1800) {
@@ -21,7 +22,8 @@ async function house(duration=1800) {
   const get=async(cookie='')=>(await fetch(base+'/api/state',{headers:{cookie}})).json();
   const post=(path:string,data:unknown,cookie='')=>fetch(base+path,{method:'POST',headers:{cookie,'Content-Type':'application/json'},body:JSON.stringify(data)});
   const register=async(name:string)=>{const r=await post('/api/register',{name,password:'test-passphrase-09'});expect(r.status).toBe(200);return r.headers.get('set-cookie')!.split(';')[0];};
-  return {base,get,post,register,stop,start,logs:()=>logs,close:async()=>{await stop();await rm(dir,{recursive:true,force:true});}};
+  const appraisal=(id:number)=>{const reader=new DatabaseSync(join(dir,'auction.sqlite'),{readOnly:true});try{return (reader.prepare('SELECT valuation FROM lots WHERE id=?').get(id) as {valuation:number}).valuation;}finally{reader.close();}};
+  return {base,get,post,register,stop,start,appraisal,logs:()=>logs,close:async()=>{await stop();await rm(dir,{recursive:true,force:true});}};
 }
 
 it('runs registration, competing bids, one settlement and one blind pawn payout without leaking private state',async()=>{
@@ -63,10 +65,10 @@ it('runs registration, competing bids, one settlement and one blind pawn payout 
 it('persists identity, held funds, hidden appraisal and overdue settlement across process restart',async()=>{
   const h=await house(1500);
   try{
-    const cookie=await h.register('returning');const before=await h.get(cookie);const id=before.lots[0].id;
+    const cookie=await h.register('returning');const before=await h.get(cookie);const id=before.lots[0].id;const appraisal=h.appraisal(id);
     await h.post('/api/lots/'+id+'/bid',{amount:100},cookie);await h.stop();await new Promise(r=>setTimeout(r,1600));await h.start();
     const after=await h.get(cookie);expect(after.me.balance).toBe(900);expect(after.me.held).toBe(0);expect(after.collection[0].id).toBe(id);
-    const sold=await(await h.post('/api/lots/'+id+'/pawn',{confirm:true},cookie)).json();
+    const sold=await(await h.post('/api/lots/'+id+'/pawn',{confirm:true},cookie)).json();expect(sold.payout).toBe(appraisal);
     await h.stop();await h.start();const final=await h.get(cookie);expect(final.me.balance).toBe(900+sold.payout);expect(final.collection[0].payout).toBe(sold.payout);
   }finally{await h.close();}
 },15000);
