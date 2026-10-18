@@ -1,6 +1,6 @@
 # ADR 001 — Live published notes, private unfinished drafts
 
-Status: implemented for C9, 11 October 2026.
+Status: historical C9 decision, 11 October 2026. Product scope superseded by ADR 002 on 19 October; its event/snapshot approach and preservation of local input continue in the auction game.
 
 ## Context
 

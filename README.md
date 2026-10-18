@@ -1,25 +1,23 @@
-# Commonplace
+# The Intangible Auction House
 
-Commonplace is a shared studio wall for unfinished thoughts: an idea, a question, or a discovery worth passing on. It is intended for a small group working in the same room, such as a design studio or reading workshop. Visitors leave short notes under a name or pseudonym. Everyone can read them, and the original browser can remove its own contribution. The first version offers a deliberately small interaction: leave something, go away, and find it here again.
+A Sunday without deadlines. Eight uninterrupted hours of sleep. The courage to say no. This is a small multiplayer auction game about the gap between wanting something and discovering what it is worth. Register a bidder name and password, receive $1,000 in fictional house credit, and enter the same saleroom as other collectors. There are no deposits, withdrawals or real-money prizes.
+
+## Why an auction house?
+
+The project began as Commonplace, a shared note wall. That established persistence and live updates, but the subject did not give people a compelling reason to be present together. I chose a different direction: another person's decision should change my decision. An auction makes that relationship immediate. The earlier iterations remain in the repository history; their technical foundations survive in the new game.
+
+Robin Sloan's [home-cooked app essay](https://www.robinsloan.com/notes/home-cooked-app/) provides a reference for making software worthwhile for a small circle instead of optimising for unlimited growth. The [final project brief](https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/assessments/final-project/) asks for co-presence. Here, a handful of people can disagree about the value of a ridiculous object without needing an audience, a feed or a popularity score.
 
 ## What good means here
 
-A good wall lowers the cost of contributing without pretending that every contribution deserves a competition. There are no likes, follower counts, scores, or ranked recommendations. Notes appear in chronological order, newest first. Three categories help visitors find a kind of thought without requiring a carefully organised folder system. A permanent link lets someone return to a particular note even after it moves off the first page.
+Good means uncertainty about value, not uncertainty about the rules. Every edition has a hidden appraisal fixed when it is created. It stays on the server until its owner confirms a final sale to the official pawnshop. The receipt then reveals the payout and gain or loss. Descriptions supply fiction, not reliable financial clues. The current appraisal distribution is an initial game parameter, not a balanced economy established through playtesting.
 
-Good also means being honest about who can see the writing. This is a public wall, not a private journal. The composer says this before submission. Browser identity is a convenience rather than a verified identity: names need not be unique, and deleting cookies loses the ability to remove earlier notes. No email address or password is requested. That choice makes entry simple, but makes this unsuitable for sensitive conversations or groups requiring verified membership.
+Bid prices, deadlines and leading paddles are public. Account balances, collections and ledger entries are private. Names are public labels; a password-backed account owns the assets. The server enforces that boundary. A collector cannot pawn another person's item, spend money already reserved elsewhere, or claim the welcome grant again by signing back in.
 
-## Where this position comes from
+Good also means that a loss feels attributable to a visible rule. Leading bids reserve funds; being outbid releases them. The house awards an item once, with no second charge at settlement. Final-second bids leave at least ten seconds for a response. An owner's confirmed pawn sale is irreversible and removes the item from circulation. No estimate is displayed before that decision.
 
-Robin Sloan's [An app can be a home-cooked meal](https://www.robinsloan.com/notes/home-cooked-app/) describes software made for a particular small circle. Commonplace takes its small intended audience seriously, but differs from his disappearing messages: the wall retains notes because a workshop needs something to return to. This is a design hypothesis, not evidence that a workshop has already found it useful.
+## Evidence and limits
 
-The [final project brief](https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/assessments/final-project/) asks for shared state, persistence and eventually real-time participation. Commonplace interprets those as a shared surface for thinking together. More features would not establish that the surface is worth using. Its next useful evaluation is whether another person can read an unfinished thought and contribute something meaningful beside it.
+Server-sent notifications refresh each visitor's own snapshot while retaining active bid inputs. The server's clock decides closing times. SQLite transactions hold the wallet, ownership, ledger and audit records together on the persistent volume. Checks exercise independent accounts, simultaneous bids, insufficient funds, unauthorised sales, duplicate payouts, hidden-value responses, restart recovery and live notifications. The official homepage and README checks remain.
 
-## Promises and checks
-
-The server validates note length and category, saves acknowledged writes to SQLite, and checks ownership before deletion. Automated tests exercise two visitors, unsafe markup, invalid submissions, and persistence after restarting the application. The database lives on Fly's persistent volume. A deployment check also saved a temporary note, restarted the actual Fly machine, verified the note survived, and removed it using its original browser identity.
-
-Published additions and deletions now update other connected pages automatically, targeting about one second on a healthy connection. Unsubmitted drafts remain local and are never broadcast. Reconnection reads the latest saved wall rather than replaying obsolete events. Incoming updates preserve the composer, cursor and draft. We accept that inserting new notes can shift the wall while protecting the act of writing. Legibility, tone and willingness to contribute still require human judgement in a real workshop; automated checks cannot establish those qualities.
-
-## Running it
-
-Visit [the live wall](https://comp4020-final-ryoudoteinei.fly.dev/). For local development, use Node 24 and pnpm 11 or later. Run `pnpm install`, then `pnpm start`. The default address is `http://localhost:8080`. Run `pnpm check` with the server running, followed by `pnpm check:evidence`. Locally, data is stored in the ignored `data/` directory; the container uses `/data`. These directories must be retained to keep the wall.
+Technical checks do not prove that the writing is funny or that the game rewards interesting choices. Those require a small group's evaluation. The starting vault contains sixteen fictional descriptions across six separately appraised editions, with further editions replenished automatically. This first release covers registration, bidding, collecting and blind pawning. Player-created listings, resale auctions and chat are deliberately deferred. The warm paper, restrained typography and solemn catalogue labels make the impossible objects the joke.

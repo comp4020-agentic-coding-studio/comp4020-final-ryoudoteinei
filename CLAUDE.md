@@ -1,28 +1,25 @@
-# Commonplace development rules
+# Auction house development rules
 
-Read README.md before changing behaviour. This is a public studio wall for a small group. Do not add scores, accounts, feeds, or other large features without a reason tied to that purpose.
+The user explicitly redirected the project from Commonplace to a fictional auction house. README.md is the current purpose; docs/decisions/002-auction-pivot-and-authority.md records the pivot and authority model. Older wall decisions and tests are historical evidence, not current product requirements.
 
-## Boundaries
+## Non-negotiable behaviour
 
-- Keep the course's fly.toml machine, volume and port settings intact. Persist application data only under DATA_DIR (production: /data).
-- Preserve spec/invariants.test.ts and the course CI checks. Publish the complete current README at /readme/ in server-rendered HTML.
-- Never report a note as saved until SQLite has acknowledged its write. Preserve the form on network or validation failure.
-- Render user content as text. Use SQL parameters, never string interpolation of user data.
-- The client never chooses the owner. Identify a browser using a random HttpOnly, SameSite cookie; do not expose the token or its hash in API responses or HTML.
-- Only the owning browser may delete a note. Names are labels, not authentication. Keep that limitation visible before posting.
-- Require JSON for mutations and reject foreign browser origins. Keep CSP and server validation enabled.
-- No fake user activity. Demonstration notes must be clearly labelled and confined to local testing.
-- Maintain keyboard labels, visible focus, phone layout, and honest loading/error states. Do not rely on colour alone to communicate categories.
+- All money is fictional. No payments, deposits, withdrawals, purchased credits or cash prizes.
+- Grant exactly 1,000 credits on successful account creation, never again on login. Do not overwrite previous accounts or assets on deployment.
+- Keep the course's Fly machine, volume and port unchanged. auction.sqlite belongs under DATA_DIR (/data in production). Retain the old commonplace.sqlite rather than deleting it.
+- Use parameterised SQL and transactions for reservations, refunds, settlement and pawn payouts. Balances cannot be negative. One lot can settle and pay out only once.
+- Names are not authentication. Derive the account from the persistent random session cookie. Store only session-token hashes and salted scrypt password hashes. Never log credentials or password request bodies.
+- Check bids, available funds, deadlines, ownership and confirmed pawn sales on the server. Ignore client-supplied owners, balances, valuations and deadlines.
+- Generate each edition's appraisal once, persist it, and never include it in public API results, HTML, JS, SSE, client attributes or pre-sale errors. Reveal the payout only following a successful confirmed pawn transaction to its owner.
+- Public state includes lot descriptions, prices, deadlines and leading paddles. Private state includes each account's wallet, collection and ledger. Build snapshots separately for each session; broadcast only change notices.
+- Preserve pending input and focus during live updates. A stale bid gets an explicit rejection. Snapshot failure retries, and reconnect fetches current authoritative state.
+- Log accepted/rejected operations with stable public paddle IDs, action, target and outcome. Persist audit rows; emit successful economic events only after commit. Do not log sealed values before sale.
+- Preserve spec/invariants.test.ts. Keep the full current README available in server-rendered HTML at /readme/.
 
-## Workflow and completion
+## Workflow
 
-- C9 follows docs/decisions/001-live-wall-local-drafts.md: publish committed changes live; keep unfinished drafts local. Never refresh the whole document in response to a remote event.
-- Reconnection must fetch the current authoritative snapshot, including deletions. Preserve composer values, focus and selection while updating the shared wall.
-- Broadcast only invalidation notices. Snapshots must apply the receiving browser's ownership, filter and page selection. Never broadcast one user's personalised HTML to everybody.
-- Keep SSE heartbeats and disconnect cleanup. On shutdown close streams so redeploys can finish. Failed snapshot requests must retry even if no subsequent note is posted.
+Use small commits and real evidence links. Document why the student rejected the first theme and requested this game; do not invent teaching-staff correspondence, peer feedback or completed usability studies. C8/C9 tags are historical snapshots and must not move.
 
-Keep commits small and cite actual commits in PROCESS.md. Record the agent's proposals as proposals; do not invent student feedback, peer testing, or personal experiences. Review README and reflection language with the student before submission.
+Run pnpm check against a running app, including isolated temporary databases for economic tests, and pnpm check:evidence for documentation. Inspect desktop and phone layouts plus an actual register/bid/collect/pawn flow. A passing local suite does not prove a live deploy. Report verification limits honestly.
 
-After server changes run pnpm check against a running local app; include regression tests for broken persistence or ownership promises. Run pnpm check:evidence after documentation changes. Inspect browser behaviour when changing interactive controls. CI/container and live-Fly verification remain separate from local testing.
-
-C8 is complete only when the core interaction works, data persists, /readme/ is present, documentation is reviewed, and the assigned Fly URL works. Local checks alone do not mean shipped. C9 adds real-time behaviour; C10 adds observability. Keep future promises separate from current behaviour.
+C10 includes separate browser profiles or incognito accounts and a terminal log narration. No tester should need a secret URL or a pre-provisioned account. The page must explain how to enter, the grant, the paddle and the pawn decision. Final A3 still requires human review of README's argument and process/reflection voice.
