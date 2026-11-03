@@ -3,15 +3,27 @@ import {randomBytes} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {writeFileSync} from 'node:fs';
 
-const base='https://comp4020-final-ryoudoteinei.fly.dev';
+const base=process.env.VERIFY_BASE_URL||'https://comp4020-final-ryoudoteinei.fly.dev';
 const app='comp4020-final-ryoudoteinei';
 const checks=[];
+let connectionRetries=0;
 function pass(text){checks.push(text);console.log('PASS: '+text);}
+async function connect(url,options){
+  for(let attempt=0;;attempt++){
+    try{return await fetch(url,options);}catch(error){
+      // A connect timeout occurs before HTTP is sent. Do not retry ambiguous
+      // post-connect errors, which might have committed a mutation.
+      if(attempt>=2 || error.cause?.code!=='UND_ERR_CONNECT_TIMEOUT')throw error;
+      connectionRetries++;
+      console.log('Retrying after a TCP connect timeout (no request sent).');
+    }
+  }
+}
 async function get(cookie=''){
-  const r=await fetch(base+'/api/state',{headers:{cookie},signal:AbortSignal.timeout(15000)});assert.equal(r.status,200);return r.json();
+  const r=await connect(base+'/api/state',{headers:{cookie}});assert.equal(r.status,200);return r.json();
 }
 async function post(path,data,cookie=''){
-  const r=await fetch(base+path,{method:'POST',headers:{cookie,'Content-Type':'application/json'},body:JSON.stringify(data),signal:AbortSignal.timeout(15000)});
+  const r=await connect(base+path,{method:'POST',headers:{cookie,'Content-Type':'application/json'},body:JSON.stringify(data)});
   return {status:r.status,headers:r.headers,data:await r.json()};
 }
 async function account(suffix){const credentials={name:'qa_final_'+Date.now().toString(36)+suffix,password:randomBytes(20).toString('hex')};const r=await post('/api/register',credentials);assert.equal(r.status,200);return {credentials,cookie:r.headers.get('set-cookie').split(';')[0]};}
@@ -37,5 +49,5 @@ assert.ok(owned,'Winning collectible not delivered');assert.equal(owned.payout,n
 assert.equal((await post('/api/lots/'+lot.id+'/pawn',{confirm:true},a.cookie)).status,403);pass('non-owner cannot pawn the winner’s item');
 const sale=await post('/api/lots/'+lot.id+'/pawn',{confirm:true},b.cookie);assert.equal(sale.status,200);assert.ok(sale.data.payout>0);assert.equal((await post('/api/lots/'+lot.id+'/pawn',{confirm:true},b.cookie)).status,403);assert.equal((await get(b.cookie)).me.balance,980+sale.data.payout);pass('blind sale reveals and credits one payout, rejecting a repeat');
 const login=await post('/api/login',b.credentials);assert.equal(login.status,200);const cookie=login.headers.get('set-cookie').split(';')[0];assert.equal((await get(cookie)).me.balance,980+sale.data.payout);pass('return login retains the final balance without another welcome grant');
-const report={date:'2026-11-03',scope:'Operator-run technical checks using independent HTTP sessions, not a participant study',lot:lot.id,notificationAndSnapshotMs:latency,checks};
+const report={date:'2026-11-03',scope:'Operator-run technical checks using independent HTTP sessions',lot:lot.id,notificationAndSnapshotMs:latency,connectionRetries,checks};
 writeFileSync('docs/verification/release-results.json',JSON.stringify(report,null,2)+'\n');

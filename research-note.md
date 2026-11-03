@@ -1,6 +1,6 @@
 # Useful autonomy depends on the quality of feedback
 
-Agentic software development should be judged by the quality of its feedback loops, rather than by how many decisions an agent makes without intervention. My position is that autonomy becomes useful when actions produce interpretable evidence and failures become constraints on subsequent work. Adding tools or longer execution budgets without improving that evidence can increase activity without increasing justified confidence. Three studies of software repair support this position while also showing why it cannot be reduced to a rule that simpler systems always win.
+Agentic development should be judged by its feedback loops rather than the number of decisions made without intervention. My position is that autonomy becomes useful when actions produce interpretable evidence and failures constrain subsequent work. Three software-repair studies support this position while showing why simpler systems do not always win.
 
 ## Interfaces are part of the reasoning environment
 
@@ -17,6 +17,8 @@ The studies should not be compared by lifting their headline success rates into 
 The strongest objection is that fixed workflows can miss discoveries that an autonomous agent would make. That objection is valid. The answer is not to remove exploration, but to bound it with observable checkpoints. Autonomy can vary across stages: broad investigation, a concrete proposed change, then independent execution checks. The relevant question becomes whether each additional degree of freedom helps resolve uncertainty that actually exists in the task.
 
 ## Tests are evidence with a boundary
+
+[Anthropic's Building effective agents (2024)](https://www.anthropic.com/research/building-effective-agents) offers a practitioner counterpart: predefined workflows and model-directed agents serve different needs, and complexity should earn its place through measured improvement. This agrees with choosing autonomy by task uncertainty. However, customer experience reported by a model vendor is not a controlled comparison. I treat it as actionable design guidance to test against a particular workload, rather than independent evidence of superiority.
 
 [Jimenez et al. (2024), SWE-bench](https://arxiv.org/html/2310.06770v3), grounds evaluation in repository-level issues and executable tests, moving beyond isolated function generation. That is a substantial improvement in ecological relevance, but issue repair still has a defined task and a test-based resolution criterion. It cannot establish whether a new application deserves to exist, whether an interface is understandable, or whether people enjoy using it.
 

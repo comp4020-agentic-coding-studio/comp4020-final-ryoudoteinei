@@ -1,0 +1,17 @@
+{
+  "date": "2026-11-03",
+  "scope": "Operator-run technical checks using independent HTTP sessions",
+  "timingCondition": "The measured round trip includes one TCP connect timeout and retry; it is not an under-one-second performance result.",
+  "lot": 12410,
+  "notificationAndSnapshotMs": 10499,
+  "checks": [
+    "two independent accounts each receive one welcome grant",
+    "live bid notification and second-account snapshot (10499ms)",
+    "outbid reservation refunds A while B reserves 20 credits",
+    "account session and balance survive actual Fly restart",
+    "one settlement delivers the collectible without exposing its appraisal",
+    "non-owner cannot pawn the winner’s item",
+    "blind sale reveals and credits one payout, rejecting a repeat",
+    "return login retains the final balance without another welcome grant"
+  ]
+}

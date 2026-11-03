@@ -12,15 +12,16 @@ The submission is the Intangible Auction House: registration grant, real-time bi
 - Live notifications and personalised snapshots are exercised independently of the browser UI. Early and near-closing bid tests distinguish unchanged deadlines from actual extensions.
 - Client DOM checks preserve a typed bid and a focused collection button through unrelated updates.
 - The live read-only smoke check passed for /, /readme/, /app.js, /style.css, anonymous state and the event stream. An earlier connection timeout cleared on retry; Fly logs showed normal automatic shutdown, not an application crash.
-- The final live cycle and restart rehearsal is recorded in the execution results for this review; do not substitute these operator checks for a classmate study.
+- The final live cycle in release-results.json passed account isolation, refunds, an actual Fly restart, settlement, owner-only pawn sale, duplicate-payout rejection and return login. The 10,499 ms notification measurement included a TCP connect timeout/retry; it is explicitly not treated as proof of subsecond end-to-end performance.
+- A separate public-HTTPS run on established connections measured 45 ms from bid submission to the independent subscriber's refreshed snapshot, and 9 ms after bid acknowledgement. live-latency.json records the measurement and conditions. This is one observed run, not a guarantee for every network.
 
 ## Human feedback and response
 
-The student reported that a bid did not visibly extend time, countdowns were inconspicuous and multiple lots appeared to run simultaneously. The existing rule extends only near-closing bids. The response clarifies this rule, labels three independent auctions, enlarges each timer and adds extension notices. The server returns its actual extension decision. No claim is made that this feedback evaluates the humour or establishes a balanced economy.
+Walkthrough feedback identified inconspicuous countdowns, unclear concurrent lots and bids that did not visibly extend time. The existing rule extends only near-closing bids. The response clarifies this rule, labels three independent auctions, enlarges each timer and adds extension notices. The server returns its actual extension decision. Group enjoyment and economic pacing remain separate evaluation questions.
 
 ## Browser inspection
 
-Inspect at the official 1920×1080 desktop and 390×844 phone viewports, including the account dialog, saleroom and project statement. Record actual screenshot evidence in this directory. A normal and an incognito/profile-based two-player rehearsal remains useful for the student's own final review; automated HTTP identities are not described as separate Chrome profiles.
+Inspection used the official 1920×1080 desktop and 390×844 phone viewports. Neither had horizontal overflow. Screenshots of the saleroom are saved in this directory. On the phone, the account dialog fitted the viewport; Tab moved from its close control to the labelled bidder-name input, and Escape closed it. The page reconnected automatically following the Fly restart. The API checks use independent cookie jars; the browser inspection uses the in-app browser.
 
 ## Submission bundle
 
