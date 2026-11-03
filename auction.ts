@@ -122,9 +122,10 @@ export function bid(member: Member, id: number, amount: unknown) {
     if (wallet.balance+reusable < (amount as number)) throw new Fault(409,'Insufficient available funds. Your other leading bids remain reserved.');
     if (lot.bidder) movement(lot.bidder,lot.price,'bid.refund',id);
     movement(member.id,-(amount as number),'bid.reserve',id);
-    db.prepare('UPDATE lots SET bidder=?,price=?,ends=? WHERE id=?').run(member.id,amount as number,Math.max(lot.ends!,Date.now()+softClose),id);
+    const ends=Math.max(lot.ends!,Date.now()+softClose);
+    db.prepare('UPDATE lots SET bidder=?,price=?,ends=? WHERE id=?').run(member.id,amount as number,ends,id);
     db.prepare('INSERT INTO bids(lot,member,amount,at) VALUES (?,?,?,?)').run(id,member.id,amount as number,Date.now());
-    return {ok:true,amount};
+    return {ok:true,amount,ends,extended:ends>lot.ends!};
   });
 }
 export function pawn(member: Member, id: number) {

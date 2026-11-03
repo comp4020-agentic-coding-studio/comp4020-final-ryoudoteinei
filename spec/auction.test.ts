@@ -7,12 +7,12 @@ import { createServer } from 'node:net';
 import { DatabaseSync } from 'node:sqlite';
 import { expect, it } from 'vitest';
 
-async function house(duration=1800) {
+async function house(duration=1800,closing=150) {
   const dir=await mkdtemp(join(tmpdir(),'auction-spec-'));
   const probe=createServer();await new Promise<void>(r=>probe.listen(0,'127.0.0.1',r));const port=(probe.address() as {port:number}).port;await new Promise<void>(r=>probe.close(()=>r()));
   let child:ChildProcess;let logs='';
   const start=()=>new Promise<void>((resolve,reject)=>{
-    child=spawn(process.execPath,['server.ts'],{env:{...process.env,NODE_ENV:'test',HOST:'127.0.0.1',PORT:String(port),DATA_DIR:dir,AUCTION_MS:String(duration),SOFT_CLOSE_MS:'150'},stdio:['ignore','pipe','pipe']});
+    child=spawn(process.execPath,['server.ts'],{env:{...process.env,NODE_ENV:'test',HOST:'127.0.0.1',PORT:String(port),DATA_DIR:dir,AUCTION_MS:String(duration),SOFT_CLOSE_MS:String(closing)},stdio:['ignore','pipe','pipe']});
     const timer=setTimeout(()=>reject(new Error('Startup timeout: '+logs)),7000);
     child.once('error',reject);child.stdout!.on('data',chunk=>{logs+=chunk.toString();if(chunk.toString().includes('listening')){clearTimeout(timer);resolve();}});
     child.stderr!.on('data',chunk=>{logs+=chunk.toString();});
@@ -63,6 +63,17 @@ it('runs registration, competing bids, one settlement and one blind pawn payout 
     const returned=login.headers.get('set-cookie')!.split(';')[0];expect((await h.get(returned)).me.balance).toBe((await h.get(a)).me.balance);
     expect((await h.post('/api/register',{name:'ALICE',password:'test-passphrase-09'})).status).toBe(409);
     expect(h.logs()).toContain('B0001');expect(h.logs()).toContain('B0002');expect(h.logs()).toContain('auction.won');expect(h.logs()).toContain('pawn.sold');expect(h.logs()).toContain('denied');expect(h.logs()).not.toContain('test-passphrase-09');
+  }finally{await h.close();}
+},15000);
+
+it('leaves early deadlines alone but extends a near-closing bid and reports the extension',async()=>{
+  const h=await house(2000,800);
+  try{
+    const cookie=await h.register('closingcheck');const lot=(await h.get()).lots[0];
+    const early=await(await h.post('/api/lots/'+lot.id+'/bid',{amount:10},cookie)).json();expect(early.extended).toBe(false);expect(early.ends).toBe(lot.ends);
+    await new Promise(r=>setTimeout(r,Math.max(0,lot.ends-Date.now()-400)));
+    const late=await(await h.post('/api/lots/'+lot.id+'/bid',{amount:20},cookie)).json();expect(late.extended).toBe(true);expect(late.ends).toBeGreaterThan(lot.ends);
+    expect((await h.get(cookie)).me).toMatchObject({balance:980,held:20});
   }finally{await h.close();}
 },15000);
 
