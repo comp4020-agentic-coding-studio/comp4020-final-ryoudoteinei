@@ -15,6 +15,7 @@ The current product is a fictional auction house. README.md is the current purpo
 - Generate each edition's appraisal once, persist it, and never include it in public API results, HTML, JS, SSE, client attributes or pre-sale errors. Reveal the payout only following a successful confirmed pawn transaction to its owner.
 - Public state includes lot descriptions, prices, deadlines and leading paddles. Private state includes each account's wallet, collection and ledger. Build snapshots separately for each session; broadcast only change notices.
 - Preserve pending input and focus during live updates. A stale bid gets an explicit rejection. Snapshot failure retries, and reconnect fetches current authoritative state.
+- Preserve unchanged collection controls as well as bid inputs during live updates. Make each lot's independent deadline prominent; announce actual extensions and explain that early bids do not extend the clock.
 - Log accepted/rejected operations with stable public paddle IDs, action, target and outcome. Persist audit rows; emit successful economic events only after commit. Do not log sealed values before sale.
 - Preserve spec/invariants.test.ts. Keep the full current README available in server-rendered HTML at /readme/.
 
