@@ -32,7 +32,13 @@ function limit(req:IncomingMessage) {
 const server=createServer(async(req,res)=>{
   res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','same-origin');
   res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
-  const url=new URL(req.url||'/','http://localhost');let member: Member|null|undefined;const requestId=randomBytes(6).toString('hex');res.setHeader('X-Request-Id',requestId);
+  let url: URL;
+  try {
+    url=new URL(req.url||'/','http://localhost');
+  } catch {
+    send(res,400,{error:'Invalid request URL.'});return;
+  }
+  let member: Member|null|undefined;const requestId=randomBytes(6).toString('hex');res.setHeader('X-Request-Id',requestId);
   try {
     member=memberFor(cookieToken(req));
     if(req.method==='GET' && ['/','/style.css','/app.js'].includes(url.pathname)){
