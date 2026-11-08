@@ -22,7 +22,7 @@ The strongest objection is that fixed workflows can miss discoveries that an aut
 
 [Jimenez et al. (2024), SWE-bench](https://arxiv.org/html/2310.06770v3), grounds evaluation in repository-level issues and executable tests, moving beyond isolated function generation. That is a substantial improvement in ecological relevance, but issue repair still has a defined task and a test-based resolution criterion. It cannot establish whether a new application deserves to exist, whether an interface is understandable, or whether people enjoy using it.
 
-Consequently, a green build should support a specific claim, not stand for general quality. In a multi-user auction, a test can establish that concurrent bids do not overspend a wallet. It cannot establish that the auction creates interesting social choices. Technical evaluation and human judgement need different methods, and neither should borrow the authority of the other. This distinction also prevents developers from presenting automated browser checks as evidence of participant experience.
+Consequently, a green build should support a specific claim, not stand for general quality. In a multi-user auction, a test can establish that concurrent bids do not overspend a wallet. It cannot establish that the auction creates interesting social choices. Technical evaluation and human judgement need different methods, and neither should borrow the authority of the other.
 
 ## A practice of accountable autonomy
 
