@@ -26,6 +26,6 @@ Consequently, a green build should support a specific claim, not stand for gener
 
 ## A practice of accountable autonomy
 
-These sources favour a practice in which developers define the decision boundary, provide informative observations, and retain responsibility for acceptance criteria. Corrections should persist as tests, documented constraints or revised interfaces, so that the next agent run inherits more than another request to try harder. This recommendation is a synthesis of the studies, not a claim that they directly evaluate that complete workflow.
+These sources favour a practice in which developers define the decision boundary, provide informative observations, and retain responsibility for acceptance criteria. Corrections should persist as tests, documented constraints or revised interfaces, so that the next agent run inherits more than another request to try harder.
 
 The resulting standard is demanding but practical: an agent's output is acceptable when the evidence matches the promises being made. Tool freedom is valuable when it helps produce that match. Where the evidence remains weak, greater autonomy should not be mistaken for greater assurance.
